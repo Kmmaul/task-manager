@@ -1,22 +1,51 @@
-const tasks = [];
+const express = require("express");
 
-function addTask(task)
-{
-    tasks.push(task);
-    console.log("Task added:", task);
-}
+const app = express();
+const PORT = 3000;
 
-function listTasks()
-{
-    console.log("Your tasks:");
-    tasks.forEach((task, index) => {
-        console.log(`${index + 1}. ${task}`);
-    });
-}
+app.use(express.json());
 
+let tasks = [
+    {id: 1, title: "Learn JavaScript", completed: false},
+    {id: 2, title: "Build an API", completed: false}
+];
 
-//test
-addTask("learn JavaScript");
-addTask("Start my dev career");
-addTask("Apply to dev jobs");
-listTasks();
+app.get("/", (req, res) => {
+    res.send("Task Manager API is running");
+});
+
+app.get("/tasks", (req, res) => {res.json(tasks)});
+
+app.post("/tasks", (req, res) => {
+    const newTask = {
+        id: tasks.length + 1,
+        title: req.body.title,
+        completed: false
+    };
+    tasks.push(newTask);
+    res.status(201).json(newTask);
+});
+
+app.put("/tasks/:id", (req, res) => {
+    const taskId = Number(req.params.id);
+    const task = tasks.find(task => task.id === taskId);
+
+        if (!task) {
+        return res.status(404).json({ message: "Task not found" });
+    }
+
+    task.title = req.body.title ?? task.title;
+    task.completed = req.body.completed ?? task.completed;
+    res.json(task);
+});
+
+app.delete("/tasks/:id", (req, res) => {
+    const taskId = Number(req.params.id);
+    tasks = tasks.filter(task => task.id !== taskId);
+
+    res.json({message: "Task deleted"});
+});
+
+app.listen(PORT, () => {
+    console.log(`Server running at http://localhost:${PORT}`);
+})
