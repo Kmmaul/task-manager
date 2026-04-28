@@ -18,4 +18,5 @@ function listTasks()
 //test
 addTask("learn JavaScript");
 addTask("Start my dev career");
+addTask("Apply to dev jobs");
 listTasks();
