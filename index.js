@@ -46,6 +46,22 @@ app.delete("/tasks/:id", (req, res) => {
     res.json({message: "Task deleted"});
 });
 
+app.get("/tasks/completed", (req, res) => {
+    const completedTasks = tasks.filter(task => task.completed === true);
+    res.json(completedTasks);
+});
+
+app.get("/tasks/:id", (req, res) => {
+    const taskId = Number(req.params.id);
+    const task = tasks.find(task => task.id === taskId);
+
+    if (!task) {
+        return res.status(404).json({ message: "Task not found" });
+    }
+
+    res.json(task);
+});
+
 app.listen(PORT, () => {
     console.log(`Server running at http://localhost:${PORT}`);
 })
