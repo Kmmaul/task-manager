@@ -16,15 +16,6 @@ app.get("/", (req, res) => {
 
 app.get("/tasks", (req, res) => {res.json(tasks)});
 
-app.post("/tasks", (req, res) => {
-    const newTask = {
-        id: tasks.length + 1,
-        title: req.body.title,
-        completed: false
-    };
-    tasks.push(newTask);
-    res.status(201).json(newTask);
-});
 
 app.put("/tasks/:id", (req, res) => {
     const taskId = Number(req.params.id);
@@ -60,6 +51,21 @@ app.get("/tasks/:id", (req, res) => {
     }
 
     res.json(task);
+});
+
+app.post("/tasks", (req, res) => {
+    if(!req.body.title || typeof req.body.title !== "string"){
+        return res.status(400).json({message: "Title is required"});
+    }
+
+    const newTask = {
+        id: tasks.length + 1,
+        title: req.body.title,
+        completed: false
+    };
+
+    tasks.push(newTask);
+    res.status(201).json(newTask);
 });
 
 app.listen(PORT, () => {
