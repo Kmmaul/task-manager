@@ -1,40 +1,78 @@
 const express = require("express");
 const cors = require("cors");
+const db = require("./db");
 const app = express();
 const PORT = 3000;
 
 app.use(express.json());
 app.use(cors());
-let tasks = [
-    {id: 1, title: "Learn JavaScript", completed: false},
-    {id: 2, title: "Build an API", completed: false}
-];
+
+
+// let tasks = [
+//     {id: 1, title: "Learn JavaScript", completed: false},
+//     {id: 2, title: "Build an API", completed: false}
+// ];
 
 app.get("/", (req, res) => {
     res.send("Task Manager API is running");
 });
 
-app.get("/tasks", (req, res) => {res.json(tasks)});
 
+app.get("/tasks", (req, res) => {
+    const tasks = db.prepare("SELECT * FROM tasks").all();
+
+    const formattedTasks = tasks.map(task => ({
+        ...task,
+        completed: Boolean(task.completed)
+    }));
+
+    res.json(formattedTasks);
+});
 
 app.put("/tasks/:id", (req, res) => {
-    const taskId = Number(req.params.id);
-    const task = tasks.find(task => task.id === taskId);
+  const taskId = Number(req.params.id);
 
-        if (!task) {
-        return res.status(404).json({ message: "Task not found" });
-    }
+  const existing = db.prepare(
+    "SELECT * FROM tasks WHERE id = ?"
+  ).get(taskId);
 
-    task.title = req.body.title ?? task.title;
-    task.completed = req.body.completed ?? task.completed;
-    res.json(task);
+  if (!existing) {
+    return res.status(404).json({ message: "Task not found" });
+  }
+
+  const title = req.body.title ?? existing.title;
+  const completed = req.body.completed ?? existing.completed;
+
+  db.prepare(
+    "UPDATE tasks SET title = ?, completed = ? WHERE id = ?"
+  ).run(title, completed ? 1 : 0, taskId);
+
+  const updated = db.prepare(
+    "SELECT * FROM tasks WHERE id = ?"
+  ).get(taskId);
+
+  res.json({
+    ...updated,
+    completed: Boolean(updated.completed)
+  });
 });
 
 app.delete("/tasks/:id", (req, res) => {
     const taskId = Number(req.params.id);
-    tasks = tasks.filter(task => task.id !== taskId);
 
-    res.json({message: "Task deleted"});
+    const existing = db.prepare(
+        "SELECT * FROM tasks WHERE id = ?"
+    ).get(taskId);
+
+    if (!existing) {
+        return res.status(404).json({ message: "Task not found" });
+    }
+
+    db.prepare(
+        "DELETE FROM tasks WHERE id = ?"
+    ).run(taskId);
+
+    res.json({ message: "Task deleted" });
 });
 
 app.get("/tasks/completed", (req, res) => {
@@ -44,13 +82,18 @@ app.get("/tasks/completed", (req, res) => {
 
 app.get("/tasks/:id", (req, res) => {
     const taskId = Number(req.params.id);
-    const task = tasks.find(task => task.id === taskId);
+    const task = db.prepare(
+        "SELECT * FROM tasks WHERE id = ?"
+    ).get(taskId);
 
     if (!task) {
         return res.status(404).json({ message: "Task not found" });
     }
 
-    res.json(task);
+    res.json({
+        ...task,
+        completed: Boolean(task.completed)
+    });
 });
 
 app.post("/tasks", (req, res) => {
@@ -58,28 +101,46 @@ app.post("/tasks", (req, res) => {
         return res.status(400).json({message: "Title is required"});
     }
 
-    const newTask = {
-        id: tasks.length + 1,
-        title: req.body.title,
-        completed: false
-    };
+    const result = db.prepare(
+        "INSERT INTO tasks (title, completed) VALUES (?, ?)"
+    ).run(req.body.title, 0);
 
-    tasks.push(newTask);
-    res.status(201).json(newTask);
+
+    const newTask = db.prepare(
+        "SELECT * FROM tasks WHERE id = ?"
+    ).get(result.lastInsertRowid);
+
+    res.status(201).json({
+        ...newTask,
+        completed: Boolean(newTask.completed)
+    });
 });
 
 app.patch("/tasks/:id/toggle", (req,res) => {
     const taskId = Number(req.params.id);
-    const task = tasks.find(task => task.id === taskId);
 
-    if(!task)
-    {
-        return res.status(404).json({message: "Task not found"});
+    const existing = db.prepare(
+        "SELECT * FROM tasks WHERE id = ?"
+    ).get(taskId);
+
+    if (!existing) {
+        return res.status(404).json({ message: "Task not found" });
     }
 
-    task.completed = !task.completed;
+    const newCompleted = existing.completed ? 0 : 1;
 
-    res.json(task);
+    db.prepare(
+        "UPDATE tasks SET completed = ? WHERE id = ?"
+    ).run(newCompleted, taskId);
+
+    const updated = db.prepare(
+        "SELECT * FROM tasks WHERE id = ?"
+    ).get(taskId);
+
+    res.json({
+        ...updated,
+        completed: Boolean(updated.completed)
+    });
 });
 
 app.listen(PORT, () => {
