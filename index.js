@@ -1,10 +1,10 @@
 const express = require("express");
-
+const cors = require("cors");
 const app = express();
 const PORT = 3000;
 
 app.use(express.json());
-
+app.use(cors());
 let tasks = [
     {id: 1, title: "Learn JavaScript", completed: false},
     {id: 2, title: "Build an API", completed: false}
